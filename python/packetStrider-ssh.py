@@ -14,7 +14,6 @@ __version__ = '0.1'
 __license__ = 'GNU General Public License v3.0'
 
 
-
 def parse_command_args():
     """Parse command line arguments"""
     desc = """packetSrider-ssh is a packet forensics tool for SSH.
