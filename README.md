@@ -1,5 +1,5 @@
 # Packet Strider (v0.1)
-![alt text](https://github.com/benjeems/packet-strider/blob/master/images/strider_400w.png "strider logo")
+![alt text](https://github.com/benjeems/packetStrider/blob/master/images/strider_400w.png "strider logo")
 
 
 ## Summary 
