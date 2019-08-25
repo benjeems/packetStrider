@@ -94,13 +94,13 @@ Network traffic from this activity is saved to tcpdump.pcap and now it's time to
 ![alt text](https://github.com/benjeems/packet-strider/blob/master/images/screen%20output.png "Screen Output")
 
  This plot shows a timeline of key predictions (image has been annotated here)
-![alt text](https://github.com/benjeems/packet-strider/blob/master/images/packet-strider-ssh%20tcpdump.pcap%20stream%200%20-%20Keystrokes.png "Keystroke timeline") 
+![alt text](https://github.com/benjeems/packetStrider/blob/master/images/packet-strider-ssh%20tcpdump.pcap%20stream%200%20-%20Keystrokes.png "Keystroke timeline") 
 
  This plot shows some window statistics, useful for a deep dive and experimenting with features.  
-![alt text](https://github.com/benjeems/packet-strider/blob/master/images/packet-strider-ssh%20tcpdump.pcap%20stream%200%20-%20Data%20Movement.png "Data movement packet stats") 
+![alt text](https://github.com/benjeems/packetStrider/blob/master/images/packet-strider-ssh%20tcpdump.pcap%20stream%200%20-%20Data%20Movement.png "Data movement packet stats") 
 
  This plot shows a simple histogram 
-![alt text](https://github.com/benjeems/packet-strider/blob/master/images/packet-strider-ssh%20tcpdump.pcap%20stream%200%20-%20Packet%20Size%20Histogram.png "Simple packet histogram") 
+![alt text](https://github.com/benjeems/packetStrider/blob/master/images/packet-strider-ssh%20tcpdump.pcap%20stream%200%20-%20Packet%20Size%20Histogram.png "Simple packet histogram") 
  
 ## Inspiration 
 This project was done as a personal Proof of Concept, as a way for me to practice with some data science libraries in Python, it was heavily inspired by my Coursera studies in Machine Learning and Data Science, in particular the pandas library and the way in which Convolutional Neural Networks (CNN) "stride" through image pixel sets using sliding windows to detect certain features within.
