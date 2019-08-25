@@ -17,7 +17,7 @@ __license__ = 'GNU General Public License v3.0'
 
 def parse_command_args():
     """Parse command line arguments"""
-    desc = """packet-strider-ssh is a packet forensics tool for SSH.
+    desc = """packetSrider-ssh is a packet forensics tool for SSH.
    It creates a rich feature set from packet metadata such SSH Protocol message content, direction, size, latency and sequencing.
    It performs pattern matching on these features, using statistical analysis, and sliding windows to predict session initiation, 
    keystrokes, human/script behaviour, password length, use of client certificates, 
@@ -1270,7 +1270,7 @@ def get_streams(fullpcap):
 
 
 def main():
-    """packet-strider-ssh is a packet forensics tool for SSH.
+    """packetStrider-ssh is a packet forensics tool for SSH.
    It creates a rich feature set from packet metadata such SSH Protocol message content, direction, size, latency and sequencing.
    It performs pattern matching on these features, using statistical analysis, and sliding windows to predict session initiation,
    keystrokes, human/script behaviour, password length, use of client certificates,
