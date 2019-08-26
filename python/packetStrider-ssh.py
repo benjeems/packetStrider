@@ -1188,8 +1188,9 @@ def report(results, file, matrix, window_matrix, window, stride, output_dir, df_
         if num_f_keystroke_events > 0:
             print('\u2503       \033[0;36;40m {} Forward keystroke related events\033[0m'.
                   format(num_f_keystroke_events))
-        if bytes_f_infiled > 0:
-            print('\u2503       \033[0;36;40m Estimated {} Bytes infiled\033[0m'.format(bytes_f_infiled))
+        # TODO fix this, calculate aggregate and report on this rather than separate techniques.
+        # if bytes_f_infiled > 0:
+        #    print('\u2503       \033[0;36;40m Estimated {} Bytes infiled\033[0m'.format(bytes_f_infiled))
 
     if (do_direction == 'reverse' or do_direction == 'both') and not meta_only:
         if num_r_init_events > 0:
@@ -1198,7 +1199,7 @@ def report(results, file, matrix, window_matrix, window, stride, output_dir, df_
             print('\u2503       \033[1;31;40m {} Reverse keystroke related events\033[0m'.
                   format(num_r_keystroke_events))
         # TODO fix this, calculate aggregate and report on this rather than separate techniques.
-        #if bytes_r_exfiled > 0:
+        # if bytes_r_exfiled > 0:
         #    print('\u2503       \033[1;31;40m Estimated {} Bytes exfiled\033[0m'.format(bytes_r_exfiled))
 
     # if num_predict_exfiltrations > 0 and not meta_only:
