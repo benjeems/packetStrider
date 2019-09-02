@@ -78,8 +78,7 @@ event ssh_encrypted_packet(c:connection, orig:bool, len:count)
 	$msg = fmt("The -R option was used by the forward connection from %s to %s. This option enables reverse SSH to occur ",c$id$orig_h,c$id$resp_h),
 	$sub = fmt("-R option was used (type 1 detected)")]);
     R_has_been_found = 1;
-    
-    break;
+    return;
     } 
    
   
@@ -105,7 +104,7 @@ event ssh_encrypted_packet(c:connection, orig:bool, len:count)
 	$msg = fmt("The -R option was used by the forward connection from %s to %s. This option enables reverse SSH to occur ",c$id$orig_h,c$id$resp_h),
 	$sub = fmt("-R option was used (type 2 detected)")]);
     R_has_been_found = 1;
-    break;
+    return;
     } 
    
 # If none of the above packets were seen but the size is that of login_prompt_size
