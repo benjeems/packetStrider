@@ -10,13 +10,14 @@ import time
 
 __author__ = 'Ben Reardon'
 __contact__ = 'benjeems@gmail.com @benreardon'
-__version__ = '0.1'
+__version__ = '0.2'
 __license__ = 'GNU General Public License v3.0'
+
 
 
 def parse_command_args():
     """Parse command line arguments"""
-    desc = """packetSrider-ssh is a packet forensics tool for SSH.
+    desc = """packet-strider-ssh is a packet forensics tool for SSH.
    It creates a rich feature set from packet metadata such SSH Protocol message content, direction, size, latency and sequencing.
    It performs pattern matching on these features, using statistical analysis, and sliding windows to predict session initiation, 
    keystrokes, human/script behaviour, password length, use of client certificates, 
@@ -53,9 +54,9 @@ def construct_matrix(pcap):
     matrix = []
     index = 0
     for packet in pcap:
-        status = '\r... Carving basic features, packet {0}'.format(index)
-        sys.stdout.write(status)
-        sys.stdout.flush()
+        # status = '\r... Carving basic features out of packet {0}'.format(index)
+        # sys.stdout.write(status)
+        # sys.stdout.flush()
         # get the packet length
         length = int(packet.tcp.len)
         # To save memory, let server packets have a negative size
@@ -205,6 +206,8 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
     # only do the rest of the analysis if we have metadata.
     if meta_size[1] != 0:
         if do_direction == 'forward':
+            print('   ... Scanning for Reverse Option being present in forward session init')
+            results_f_R_flag_used = scan_for_reverse_session_R_option(pcap, matrix, meta_size)
             print('   ... Scanning for Forward login attempts')
             results_f_logins, fwd_logged_in_at_packet = scan_for_forward_login_attempts(matrix, meta_size, pcap)
             print('   ... Scanning for Forward key accepts')
@@ -215,12 +218,14 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
             if keystrokes and fwd_logged_in_at_packet > 0:
                 print('   ... Scanning for Forward keystrokes and enters')
                 results_f_keystroke = scan_for_forward_keystrokes(matrix, meta_size, pcap, fwd_logged_in_at_packet)
-                results = (results + results_f_key_accepts + results_f_login_prompts +
+                results = (results + results_f_R_flag_used + results_f_key_accepts + results_f_login_prompts +
                            results_f_logins + results_f_keystroke)
             else:
-                results = results + results_f_key_accepts + results_f_login_prompts + results_f_logins
+                results = results + results_f_R_flag_used + results_f_key_accepts + results_f_login_prompts + results_f_logins
 
         elif do_direction == 'reverse':
+            print('   ... Scanning for Reverse Option being present in forward session init')
+            results_f_R_flag_used = scan_for_reverse_session_R_option(pcap, matrix, meta_size)
             print('   ... Scanning for Reverse Session initiation')
             results_r_init, reverse_init_start = scan_for_reverse_session_initiation(
                 matrix, meta_size, pcap)
@@ -232,10 +237,12 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
                 if keystrokes:
                     print('   ... Scanning for Reverse keystrokes and enters')
                     results_r_keystroke = scan_for_reverse_keystrokes(matrix, meta_size, pcap, reverse_init_start)
-                    results = results + results_r_keystroke + results_r_init + results_r_logins
+                    results = results + results_f_R_flag_used + results_r_keystroke + results_r_init + results_r_logins
                 else:
-                    results = results + results_r_init + results_r_logins
+                    results = results + results_f_R_flag_used + results_r_init + results_r_logins
         elif do_direction == 'both':
+            print('   ... Scanning for Reverse Option being present in forward session init')
+            results_f_R_flag_used = scan_for_reverse_session_R_option(pcap, matrix, meta_size)
             print('   ... Scanning for Forward login attempts')
             results_f_logins, fwd_logged_in_at_packet = scan_for_forward_login_attempts(matrix, meta_size, pcap)
             print('   ... Scanning for Forward key accepts')
@@ -254,10 +261,10 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
             if keystrokes and fwd_logged_in_at_packet > 0:
                 print('   ... Scanning for Reverse keystrokes and enters')
                 results_r_keystroke = scan_for_reverse_keystrokes(matrix, meta_size, pcap, reverse_init_start)
-                results = results + (results_f_key_accepts + results_f_login_prompts + results_f_logins
+                results = results + results_f_R_flag_used + (results_f_key_accepts + results_f_login_prompts + results_f_logins
                                      + results_f_keystroke + results_r_init + results_r_logins + results_r_keystroke)
             else:
-                results = results + (results_f_key_accepts + results_f_login_prompts + results_f_logins +
+                results = results + results_f_R_flag_used + (results_f_key_accepts + results_f_login_prompts + results_f_logins +
                                      results_r_init + results_r_logins)
     if do_windowing_and_plots:
         window_matrix = construct_window_matrix(pcap, matrix, stream, window, stride, meta_size, reverse_init_start,
@@ -273,13 +280,16 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
 def enrich_results_notes_field(results):
     """ Enriches the results with notes field"""
     result_enriched = []
-
+    fwd_login_time = 0
     for result in results:
         note_field = ''
         delta = result[7]
         direction = result[0]
         indicator = result[1]
         packet_size = (result[4])
+        if 'forward' in direction and 'login success' in indicator:
+            fwd_login_time=result[6]
+
         # If the size of the login failure or login success is > 350 (372 in testing) then likely it is certificate auth
         if 'forward' in direction and ('login success' in indicator or 'login failure' in indicator):
             if packet_size > 350:
@@ -315,7 +325,15 @@ def enrich_results_notes_field(results):
                 note_field = 'Delta suggests creds NOT entered interactively by human'
             else:
                 note_field = 'Delta suggests creds were entered interactively by human'
+        if 'reverse' in direction and ('-R ' in indicator):
+                note_field = '!! -R option used by forward session. This enables reverse SSH'
 
+        if 'reverse' in direction and ('session init' in indicator):
+            reverse_setup_delta = result[6] - fwd_login_time
+            if reverse_setup_delta < 2:
+                note_field = "Delta (<2s) suggests this may be automated (eg implant/RCE/SSRF)"
+            else:
+                note_field = "Delta (>2s) suggests this may be manual, by human"
         enriched_row = [result[0], result[1], result[2],
                         result[3], result[4], result[5],
                         result[6], result[7], note_field]
@@ -480,7 +498,7 @@ def scan_for_forward_login_attempts(matrix, meta_size, pcap):
                                                     i, i + 1,
                                                     abs(matrix[i + 1]), 2, relative_timestamp]]
             # This is used later as a stop point on scans for password prompts and key accepts
-            fwd_logged_in_at_packet = i 
+            fwd_logged_in_at_packet = i
             # Stop looking when the log in has been seen
             break
     return results_f_logins, fwd_logged_in_at_packet
@@ -562,6 +580,7 @@ def scan_for_forward_keystrokes(matrix, meta_size, pcap, fwd_logged_in_at_packet
                                                               abs(size_this), 2, relative_timestamp]]
                 i = i + 2
             # If packet is server packet, and bigger than forward size (i.e not a keepalive), lets report the enter key
+            # YMMV on tab completion see TODO. comment this out if appropriate
             elif size_next < -(forward_keystroke_size + 8) and size_next_next == forward_keystroke_size:
                 relative_timestamp = float(pcap[i].sniff_timestamp) - timestamp_first
                 keystrokes = keystrokes + 1
@@ -609,6 +628,68 @@ def scan_for_forward_keystrokes(matrix, meta_size, pcap, fwd_logged_in_at_packet
             i = i + 1
 
     return results_f_keystroke
+
+
+def scan_for_reverse_session_R_option(pcap, matrix,meta_size):
+    """Looks for evidence of the -R option being used during the initial forward connection
+    This indicates that the forward session has explicitly been created to support reverse SSH"""
+    results_f_R_flag_used = []
+    num_packets = len(matrix)
+    timestamp_first = float(pcap[0].sniff_timestamp)
+    stop_at = min((num_packets - 10), 100)
+    size_login_prompt = meta_size[5]
+
+    for i in range(0, stop_at):
+        if i == stop_at:
+            break
+        if 'message_code' in dir(pcap[i].ssh):
+            # look for 'New Keys' code packet 21
+            if int(pcap[i].ssh.message_code) == 21 and 'message_code' not in dir(pcap[i + 1].ssh):
+                # We have found the newkeys packets and can count from here to detect -R anomaly
+
+                offset = 4
+                # look ahead for the login prompt size, the first one should be at +4 packets from here
+                # Only look forward 20 packets as an offset, this should be plenty enough to cater for failed passwords
+                # debug print('i={}'.format(i))
+                # debug print(matrix[i])
+                while ((i + offset + 7) < stop_at) and offset < 20 :
+                    #debug print('offset={}'.format(offset))
+                    #debug print(i + offset + 7)
+                    #debug print(matrix[i + offset + 3])
+                    if (matrix[i + offset]) == size_login_prompt:
+                        if matrix[i + offset + 2] != size_login_prompt:
+                            # check for behaviour often but not always exhibited by mac clients when -R is used
+                            if (matrix[i + offset + 3] > 0 and
+                                matrix[i + offset + 4] < 0 and
+                                matrix[i + offset + 4] != size_login_prompt and
+                                matrix[i + offset + 5] > 0 and
+                                matrix[i + offset + 6] < 0 and
+                                matrix[i + offset + 6] != size_login_prompt and
+                                abs(matrix[i + offset + 6]) < abs(matrix[i + offset + 5])):
+                                relative_timestamp = float(pcap[i + 10].sniff_timestamp) - timestamp_first
+                                results_f_R_flag_used = (results_f_R_flag_used + [['reverse', '-R used      ',
+                                                        (i + offset + 7), (i + offset + 7), abs(matrix[i + offset + 7]), 3, relative_timestamp]])
+                                # print('found a type 1 style -R')
+                                break
+                            #  check for behaviour often exhibited by ubuntu clients when -R is used
+                            elif (matrix[i + offset + 3] > 0 and
+                                  matrix[i + offset + 4] > 0 and
+                                  matrix[i + offset + 5] < 0 and
+                                  matrix[i + offset + 5] != size_login_prompt and
+                                  matrix[i + offset + 6] < 0 and
+                                  matrix[i + offset + 6] != size_login_prompt and
+                                  abs(matrix[i + offset + 6]) < abs(matrix[i + offset + 5]) and
+                                  matrix[i + offset + 7] > 0):
+
+                                relative_timestamp = float(pcap[i + 10].sniff_timestamp) - timestamp_first
+                                results_f_R_flag_used = (results_f_R_flag_used + [['reverse', '-R used   ',
+                                                        (i + offset + 7), (i + offset + 7), abs(matrix[i + offset + 7]), 3, relative_timestamp]])
+                                # print('found a type 2 style -R')
+                                break
+                    offset = offset + 1
+
+
+    return results_f_R_flag_used
 
 
 def scan_for_reverse_session_initiation(matrix, meta_size, pcap):
@@ -1165,7 +1246,7 @@ def report(results, file, matrix, window_matrix, window, stride, output_dir, df_
                 num_f_keystroke_events += 1
         # Then do Reverse indicators
         elif 'reverse' in result[0]:
-            if 'init' in result[1] or 'login' in result[1]:
+            if 'init' in result[1] or 'login' in result[1] or '-R' in result[1]:
                 num_r_init_events += 1
             elif 'ENTER' in result[1]:
                 num_r_keystroke_events += 1
@@ -1199,7 +1280,7 @@ def report(results, file, matrix, window_matrix, window, stride, output_dir, df_
             print('\u2503       \033[1;31;40m {} Reverse keystroke related events\033[0m'.
                   format(num_r_keystroke_events))
         # TODO fix this, calculate aggregate and report on this rather than separate techniques.
-        # if bytes_r_exfiled > 0:
+        #if bytes_r_exfiled > 0:
         #    print('\u2503       \033[1;31;40m Estimated {} Bytes exfiled\033[0m'.format(bytes_r_exfiled))
 
     # if num_predict_exfiltrations > 0 and not meta_only:
@@ -1270,7 +1351,7 @@ def get_streams(fullpcap):
 
 
 def main():
-    """packetStrider-ssh is a packet forensics tool for SSH.
+    """packet-strider-ssh is a packet forensics tool for SSH.
    It creates a rich feature set from packet metadata such SSH Protocol message content, direction, size, latency and sequencing.
    It performs pattern matching on these features, using statistical analysis, and sliding windows to predict session initiation,
    keystrokes, human/script behaviour, password length, use of client certificates,
