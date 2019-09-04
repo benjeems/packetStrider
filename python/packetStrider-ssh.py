@@ -658,7 +658,7 @@ def scan_for_reverse_session_R_option(pcap, matrix,meta_size):
                     #debug print(matrix[i + offset + 3])
                     if (matrix[i + offset]) == size_login_prompt:
                         if matrix[i + offset + 2] != size_login_prompt:
-                            # check for behaviour often but not always exhibited by mac clients when -R is used
+                            # check for Type 1 behaviour - often but not always exhibited by mac clients when -R is used
                             if (matrix[i + offset + 3] > 0 and
                                 matrix[i + offset + 4] < 0 and
                                 matrix[i + offset + 4] != size_login_prompt and
@@ -671,7 +671,7 @@ def scan_for_reverse_session_R_option(pcap, matrix,meta_size):
                                                         (i + offset + 7), (i + offset + 7), abs(matrix[i + offset + 7]), 3, relative_timestamp]])
                                 # print('found a type 1 style -R')
                                 break
-                            #  check for behaviour often exhibited by ubuntu clients when -R is used
+                            #  check for Type 2 behaviour often exhibited by ubuntu clients when -R is used
                             elif (matrix[i + offset + 3] > 0 and
                                   matrix[i + offset + 4] > 0 and
                                   matrix[i + offset + 5] < 0 and
