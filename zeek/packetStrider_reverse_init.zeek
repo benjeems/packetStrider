@@ -28,7 +28,7 @@ redef enum Notice::Type += {
 event ssh_encrypted_packet(c:connection, orig:bool, len:count)
 { 
   if (reverse_init_found == 1 && size_newkeys_next_found == 1) {
-      break;
+      return;
     } 
     
   if (size_newkeys_next_found == 0) {
@@ -40,24 +40,24 @@ event ssh_encrypted_packet(c:connection, orig:bool, len:count)
     if (index == 1) {
       if (orig != orig_newkeys_next && len == size_newkeys_next) {
         size_newkeys_next_found = 1;
-        break;
+        return;
       }
     }
   }
 
   if (base == 0 && orig == F && len == (size_newkeys_next + 40)) {
     base = 1;
-    break;
+    return;
   }
   if (base == 1 && orig == T && len == (size_newkeys_next + 40)) {
       base = 2;
       len_base_2 = len; 
-      break; 
+      return; 
   }
   if (base == 1 && (orig == F || len != (size_newkeys_next + 40))) {
       base = 0;
       len_base_2 = 1500;
-      break;
+      return;
   }
   
   if (base == 2 && orig == F && len >= len_base_2) {
@@ -66,10 +66,10 @@ event ssh_encrypted_packet(c:connection, orig:bool, len:count)
       NOTICE([$note=SSH_R_Reverse,
           $msg = fmt("Reverse Shell was initiated from %s to %s",c$id$resp_h,c$id$orig_h),
           $sub = fmt("Reverse Shell was initiated")]); 
-      break;
+      return;
   }
   if (base == 2 && (orig == T || len < len_base_2)) {
       base = 0;
-      break;
+      return;
   }
 }
