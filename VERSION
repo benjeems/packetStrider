@@ -1,4 +1,7 @@
-Version  0.2 (2 September 2019)
+Version 0.21 (29 September 2019)
+ - Added support for when key sharing via Agent Forwarding.  eg https://developer.github.com/v3/guides/using-ssh-agent-forwarding/
+
+Version 0.2 (2 September 2019)
  - Added support for when -R is used in forward connection commandline 
 
 Version 0.1 
