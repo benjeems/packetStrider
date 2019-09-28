@@ -1,4 +1,4 @@
-# Packet Strider (v0.2)
+# Packet Strider (v0.21)
 ![alt text](https://github.com/benjeems/packetStrider/blob/master/images/strider_400w.png "strider logo")
 
 
@@ -16,6 +16,7 @@ Separately to the forensic context, packet strider predictions could also be use
   - Forward and Reverse session initiation (prior to login attempt).
   - All predictions and metadata reports on a stream by stream basis.
   - The use of the -R option in the forward session. This option enables Reverse SSH to occur.
+  - Client's SSH private key shared with server via SSH Agent Forwarding.
   - Failed and successful logins.
   - Human or scripted, based on timing deltas.
   - Is the server already known to the client? or was it the first time a connection between the two has been made. This is done through packet deltas associated with known_hosts.
