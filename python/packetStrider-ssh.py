@@ -66,7 +66,6 @@ def construct_matrix(pcap):
         # Update the matrix with details
         matrix = matrix + [length]
         index = index + 1
-
     return matrix
 
 
@@ -102,6 +101,8 @@ def find_meta_size(pcap, num_packets, stream):
                 meta_size = [stream, reverse_keystroke_size,
                              size_newkeys_next, size_newkeys_next2, size_newkeys_next3, size_login_prompt]
                 break
+    #debug
+    #print(meta_size)
     return meta_size
 
 
@@ -214,14 +215,16 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
             results_f_key_accepts = scan_for_forward_host_key_accepts(pcap, fwd_logged_in_at_packet)
             print('   ... Scanning for Forward login prompts')
             results_f_login_prompts = scan_for_forward_login_prompts(matrix, meta_size, pcap, fwd_logged_in_at_packet)
+            print('   ... Scanning for Agent forwarding')
+            results_f_agentForwarding = scan_for_forward_AgentForwarding(matrix, pcap)
             # print('fwd_logged_in_at_packet={}'.format(fwd_logged_in_at_packet))
             if keystrokes and fwd_logged_in_at_packet > 0:
                 print('   ... Scanning for Forward keystrokes and enters')
                 results_f_keystroke = scan_for_forward_keystrokes(matrix, meta_size, pcap, fwd_logged_in_at_packet)
                 results = (results + results_f_R_flag_used + results_f_key_accepts + results_f_login_prompts +
-                           results_f_logins + results_f_keystroke)
+                           results_f_logins + results_f_agentForwarding + results_f_keystroke)
             else:
-                results = results + results_f_R_flag_used + results_f_key_accepts + results_f_login_prompts + results_f_logins
+                results = results + results_f_R_flag_used + results_f_key_accepts + results_f_login_prompts + results_f_logins + results_f_agentForwarding
 
         elif do_direction == 'reverse':
             print('   ... Scanning for Reverse Option being present in forward session init')
@@ -249,6 +252,9 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
             results_f_key_accepts = scan_for_forward_host_key_accepts(pcap, fwd_logged_in_at_packet)
             print('   ... Scanning for Forward login prompts')
             results_f_login_prompts = scan_for_forward_login_prompts(matrix, meta_size, pcap, fwd_logged_in_at_packet)
+            print('   ... Scanning for Agent forwarding')
+            results_f_agentForwarding = scan_for_forward_AgentForwarding(matrix, pcap)
+
             if keystrokes and fwd_logged_in_at_packet > 0:
                 print('   ... Scanning for Forward keystrokes and enters')
                 results_f_keystroke = scan_for_forward_keystrokes(matrix, meta_size, pcap, fwd_logged_in_at_packet)
@@ -261,11 +267,11 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
             if keystrokes and fwd_logged_in_at_packet > 0:
                 print('   ... Scanning for Reverse keystrokes and enters')
                 results_r_keystroke = scan_for_reverse_keystrokes(matrix, meta_size, pcap, reverse_init_start)
-                results = results + results_f_R_flag_used + (results_f_key_accepts + results_f_login_prompts + results_f_logins
-                                     + results_f_keystroke + results_r_init + results_r_logins + results_r_keystroke)
+                results = (results + results_f_R_flag_used + results_f_key_accepts + results_f_login_prompts + results_f_logins
+                                     + results_f_agentForwarding + results_f_keystroke + results_r_init + results_r_logins + results_r_keystroke)
             else:
-                results = results + results_f_R_flag_used + (results_f_key_accepts + results_f_login_prompts + results_f_logins +
-                                     results_r_init + results_r_logins)
+                results = (results + results_f_R_flag_used + results_f_key_accepts + results_f_login_prompts + results_f_logins +
+                                     results_f_agentForwarding + results_r_init + results_r_logins)
     if do_windowing_and_plots:
         window_matrix = construct_window_matrix(pcap, matrix, stream, window, stride, meta_size, reverse_init_start,
                                                 results)
@@ -334,10 +340,14 @@ def enrich_results_notes_field(results):
                 note_field = "Delta (<2s) suggests this may be automated (eg implant/RCE/SSRF)"
             else:
                 note_field = "Delta (>2s) suggests this may be manual, by human"
+        if 'forward' in direction and 'agent fwding' in indicator:
+            note_field = "!! Client private key was shared with the server via SSH agent forwarding"
+
         enriched_row = [result[0], result[1], result[2],
                         result[3], result[4], result[5],
                         result[6], result[7], note_field]
         result_enriched.append(enriched_row)
+
 
     return result_enriched
 
@@ -469,6 +479,69 @@ def scan_for_forward_login_prompts(matrix, meta_size, pcap, fwd_logged_in_at_pac
 
     return results_f_login_prompts
 
+
+def scan_for_forward_AgentForwarding(matrix, pcap):
+    """Looks for packet sizing suggesting Agent forwarding has been configured"""
+    timestamp_first = float(pcap[0].sniff_timestamp)
+    results_f_agentForwarding = []
+    # Strike represents a counter, the game starts at srike -1 and a match is made when strike = 5
+    strike = -1
+    # The tell-tale client packet normally lies around packet 18 to 22, so stop at (say) packet 40
+    stop_at = 40
+    for i in range(0, min(stop_at, len(pcap) - 1)):
+        # Keep track of any strikes made on this packet.
+        this_ball = 1
+        # Only start looking after the new keys packet
+        if 'message_code' in dir(pcap[i].ssh):
+            # look for 'New Keys' code packet 21
+            if int(pcap[i].ssh.message_code) == 21 and 'message_code' not in dir(pcap[i + 1].ssh):
+                # Batter up
+                strike = 0
+        # Tell tale packet is always surrounded by 2 Server packets before and 2 Server packets after
+        # Use these 4 server packets to ensure no FPs
+        # Server packet
+        if strike == 0 and this_ball:
+            if matrix[i] < 0:
+                strike = 1
+                this_ball = 0
+            else:
+                # Reset the strike counter afresh if a mismatch is made.
+                strike = 0
+        # Server packet
+        if strike == 1 and this_ball:
+            if matrix[i] < 0:
+                strike = 2
+                this_ball = 0
+            else:
+                strike = 0
+        # Now look for the tell-tale packet found in testing.
+        # testing shows client packet < 500 == no forwarding, > 500 == forwarding. 650 used to prevent runaway huge packets
+        # TODO dig deeper on this 500 size observation, found out what this packet represents exactly and tune further
+        if strike == 2 and this_ball:
+            if 500 < matrix[i] < 650:
+                strike = 3
+                this_ball = 0
+            else:
+                strike = 0
+        if strike == 3 and this_ball:
+            # Server packet
+            if matrix[i] < 0:
+                strike = 4
+                this_ball = 0
+            else:
+                strike = 0
+        # Server packet
+        if strike == 4 and this_ball:
+            if matrix[i] < 0:
+                # Steeeeee-rike, you're outta here
+                strike = 5
+                relative_timestamp = (float(pcap[i - 2].sniff_timestamp) - timestamp_first)
+                results_f_agentForwarding = results_f_agentForwarding + [['forward', 'agent fwding ',
+                                                                          i, i, int(pcap[i - 2].tcp.len),
+                                                                          1, relative_timestamp]]
+            else:
+                strike = 0
+    return results_f_agentForwarding
 
 def scan_for_forward_login_attempts(matrix, meta_size, pcap):
     """Looks for successful and unsuccessful forward SSH logins"""
@@ -658,7 +731,7 @@ def scan_for_reverse_session_R_option(pcap, matrix,meta_size):
                     #debug print(matrix[i + offset + 3])
                     if (matrix[i + offset]) == size_login_prompt:
                         if matrix[i + offset + 2] != size_login_prompt:
-                            # check for Type 1 behaviour - often but not always exhibited by mac clients when -R is used
+                            # check for behaviour often but not always exhibited by mac clients when -R is used
                             if (matrix[i + offset + 3] > 0 and
                                 matrix[i + offset + 4] < 0 and
                                 matrix[i + offset + 4] != size_login_prompt and
@@ -671,7 +744,7 @@ def scan_for_reverse_session_R_option(pcap, matrix,meta_size):
                                                         (i + offset + 7), (i + offset + 7), abs(matrix[i + offset + 7]), 3, relative_timestamp]])
                                 # print('found a type 1 style -R')
                                 break
-                            #  check for Type 2 behaviour often exhibited by ubuntu clients when -R is used
+                            #  check for behaviour often exhibited by ubuntu clients when -R is used
                             elif (matrix[i + offset + 3] > 0 and
                                   matrix[i + offset + 4] > 0 and
                                   matrix[i + offset + 5] < 0 and
