@@ -189,7 +189,7 @@ def find_meta_hassh(pcap, num_packets, stream):
     return meta_hassh
 
 
-def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_and_plots, keystrokes):
+def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_and_plots, keystrokes, meta_hassh):
 
     # Initialialize with the first packet of the pcap
     # TODO this assumes that the pcap contains the entire init.
@@ -216,7 +216,7 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
             print('   ... Scanning for Forward login prompts')
             results_f_login_prompts = scan_for_forward_login_prompts(matrix, meta_size, pcap, fwd_logged_in_at_packet)
             print('   ... Scanning for Agent forwarding')
-            results_f_agentForwarding = scan_for_forward_AgentForwarding(matrix, pcap)
+            results_f_agentForwarding = scan_for_forward_AgentForwarding(matrix, pcap, meta_hassh)
             # print('fwd_logged_in_at_packet={}'.format(fwd_logged_in_at_packet))
             if keystrokes and fwd_logged_in_at_packet > 0:
                 print('   ... Scanning for Forward keystrokes and enters')
@@ -253,7 +253,7 @@ def analyze(matrix, meta_size, pcap, window, stride, do_direction, do_windowing_
             print('   ... Scanning for Forward login prompts')
             results_f_login_prompts = scan_for_forward_login_prompts(matrix, meta_size, pcap, fwd_logged_in_at_packet)
             print('   ... Scanning for Agent forwarding')
-            results_f_agentForwarding = scan_for_forward_AgentForwarding(matrix, pcap)
+            results_f_agentForwarding = scan_for_forward_AgentForwarding(matrix, pcap, meta_hassh)
 
             if keystrokes and fwd_logged_in_at_packet > 0:
                 print('   ... Scanning for Forward keystrokes and enters')
@@ -341,7 +341,7 @@ def enrich_results_notes_field(results):
             else:
                 note_field = "Delta (>2s) suggests this may be manual, by human"
         if 'forward' in direction and 'agent fwding' in indicator:
-            note_field = "!! Client private key was shared with the server via SSH agent forwarding"
+            note_field = "!! -A option used. Client private key sharing via SSH Agent Forwarding"
 
         enriched_row = [result[0], result[1], result[2],
                         result[3], result[4], result[5],
@@ -480,7 +480,7 @@ def scan_for_forward_login_prompts(matrix, meta_size, pcap, fwd_logged_in_at_pac
     return results_f_login_prompts
 
 
-def scan_for_forward_AgentForwarding(matrix, pcap):
+def scan_for_forward_AgentForwarding(matrix, pcap, meta_hassh):
     """Looks for packet sizing suggesting Agent forwarding has been configured"""
     timestamp_first = float(pcap[0].sniff_timestamp)
     results_f_agentForwarding = []
@@ -515,10 +515,17 @@ def scan_for_forward_AgentForwarding(matrix, pcap):
             else:
                 strike = 0
         # Now look for the tell-tale packet found in testing.
-        # testing shows client packet < 500 == no forwarding, > 500 == forwarding. 650 used to prevent runaway huge packets
-        # TODO dig deeper on this 500 size observation, found out what this packet represents exactly and tune further
+        # testing shows (with openssh) client packet < 500 == no forwarding, > 500 == forwarding.
+        # testing shows (with Putty) client packet 176 (< 200) == no forwarding, 256 (> 200) == forwarding.
+        # TODO dig deeper on these size observations, found out what this packet represents exactly and tune further
         if strike == 2 and this_ball:
-            if 500 < matrix[i] < 650:
+            if 'putty' in meta_hassh[1].lower():
+                if 200 < matrix[i] < 650:
+                    strike = 3
+                    this_ball = 0
+                else:
+                    strike = 0
+            elif 500 < matrix[i] < 650:
                 strike = 3
                 this_ball = 0
             else:
@@ -1511,7 +1518,7 @@ def main():
                         # Note the matrix is reordered inside the anaylze function to account for any of order
                         # keystroke packets Hence appearing on both side of the function call
                         results, window_matrix, matrix = analyze(matrix, meta_size, pcap, window, stride, do_direction,
-                                                                 do_windowing_and_plots, keystrokes)
+                                                                 do_windowing_and_plots, keystrokes, meta_hassh)
                     time_first_packet = float(pcap[0].sniff_timestamp)
                     time_first_packet_gmt = time.strftime('%Y-%m-%d %H:%M:%S', time.gmtime(time_first_packet))
                     pcap.close()
