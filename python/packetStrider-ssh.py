@@ -10,7 +10,7 @@ import time
 
 __author__ = 'Ben Reardon'
 __contact__ = 'benjeems@gmail.com @benreardon'
-__version__ = '0.2'
+__version__ = '0.22'
 __license__ = 'GNU General Public License v3.0'
 
 
