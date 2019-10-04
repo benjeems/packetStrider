@@ -1,6 +1,6 @@
 # __author__ = 'Ben Reardon'
 # __contact__ = 'benjeems@gmail.com @benreardon'
-# __version__ = '0.1'
+# __version__ = '0.2'
 # __license__ = 'GNU General Public License v3.0'
 #            packetSrider_AgentForwarding
 # This is a port of the pattern logic within the packetStrider 
@@ -16,10 +16,16 @@ redef SSH::disable_analyzer_after_detection = F;
 global strike = 0; 
 global index = 1; 
 global has_been_found = 0;
+global client_protocol_string = "";
 
 redef enum Notice::Type += {
     SSH_F_ForwardAgent
     };
+
+event ssh_client_version(c: connection, version: string) {
+  client_protocol_string = to_lower(version);
+}
+
 
 event ssh_encrypted_packet(c:connection, orig:bool, len:count)
 { 
@@ -54,9 +60,15 @@ event ssh_encrypted_packet(c:connection, orig:bool, len:count)
   }
  
   # Now look for the tell-tale packet found in testing.
-  # testing shows client packet < 500 == no forwarding, > 500 == forwarding. 650 used to prevent runaway huge packets
-  # TODO dig deeper on this 500 size observation, found out what this packet represents exactly and tune further
-  if (strike  == 2 && orig == T && 500 < len && len < 650) {
+  # testing shows (with openssh) client packet < 500 == no forwarding, > 500 == forwarding.
+  # testing shows (with Putty) client packet 176 (< 200) == no forwarding, 256 (> 200) == forwarding.
+  if (strike  == 2 && orig == T && 500 < len && len < 650 && "putty" !in client_protocol_string) {
+    strike = 3; 
+    index = index + 1;
+    #print fmt("strike = %d orig = %s len = %d",  strike, orig, len); print(" ");
+    return;
+  }
+  if (strike  == 2 && orig == T && 200 < len && len < 650 && "putty" in client_protocol_string) {
     strike = 3; 
     index = index + 1;
     #print fmt("strike = %d orig = %s len = %d",  strike, orig, len); print(" ");
@@ -77,7 +89,7 @@ event ssh_encrypted_packet(c:connection, orig:bool, len:count)
     #print fmt("strike = %d orig = %s len = %d",  strike, orig, len); print(" ");
     #print fmt("###### Found Agent Forwarding");
     NOTICE([$note=SSH_F_ForwardAgent,
-    $msg = fmt("Agent Forwarding is in use. Client %s is sharing it's private SSH key with Server %s",c$id$orig_h,c$id$resp_h),
+    $msg = fmt("Agent Forwarding is in use (-A option). Client %s has requested to share it's private SSH key with Server %s",c$id$orig_h,c$id$resp_h),
     $sub = fmt("Agent Forwarding is in use")]);
     has_been_found = 1;
     return;
