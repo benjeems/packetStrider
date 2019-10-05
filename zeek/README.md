@@ -9,7 +9,7 @@ References:
  https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2019-12491  
 
 ## -R Option
-The use -R option in the forward session - this is what enables a Reverse connection to be made. This artefact is discovered very early in the PCAP, directly after the the forward session is authenticated.
+The use -R option in the forward session - this is what *enables* a Reverse connection to be made later in the session. This artefact is discovered very early in the PCAP, directly after the the forward session is authenticated.
 
 ## Reverse session initiation
 Initiation of the Reverse SSH session, this can occur at any point (early, or late) in the forward session. This is discovered prior to the Reverse session being authenticated successfully.
