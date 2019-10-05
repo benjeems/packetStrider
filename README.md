@@ -12,8 +12,7 @@ Separately to the forensic context, packet strider predictions could also be use
 
 ## The broad techniques of packet strider (AKA How?)
 - Builds a rich feature set in the form of pandas dataframes. Over 40 features are engineered from packet metadata such as SSH Protocol message content, normalized statistics, direction, size, latency and sliding window features.
-- Strides through this feature set numerous times using sliding windows - Inspired by Convolutional Neural networks - to predict:
-  - Forward and Reverse session initiation In the case of the Reverse SSH session, this can occur at any point (early, or late) in the forward session. This is discovered prior to the Reverse session being authenticated successfully.
+- Strides through this feature set numerous times using sliding windows (Inspired by Convolutional Neural networks) to predict:
   - The use -R option in the forward session - this is what *enables* a Reverse connection to be made later in the session. This artefact is discovered very early in the session, directly after the the forward session is authenticated. This is the first available warning sign that Reverse sessions are possible.
   - Initiation of the Reverse SSH session, this can occur at any point (early, or late) in the forward session. This is discovered prior to the Reverse session being authenticated successfully. This is the second warning sign, in that a reverse session has just been requested and setup for authentication.
   - Success and/or Failure of the Reverse session authentication. This is the third and final warning sign, after this point you know someone is on your host, inside a reverse session.
