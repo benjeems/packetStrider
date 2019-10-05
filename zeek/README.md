@@ -17,4 +17,4 @@ Initiation of the Reverse SSH session, this can occur at any point (early, or la
 
 ## Reverse session Success
 Success and/or Failure of the Reverse session authentication. TODO bundle these 2 scripts into one. 
-This is the third and final warning sign, after this point you know someone is on your host, inside a reverse session. You can use the main Python script in this package to get visibility into the nature of activity (keystrokes/exfils) conducted within the Reverse session.
+This is the third and final warning sign, after this point you know someone is on your host, inside a reverse session. For richer visibibilty you can now use the main Python script in this package to explore the nature of activity (eg keystrokes and exfiltration) conducted within the Reverse session.
