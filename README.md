@@ -13,7 +13,7 @@ Separately to the forensic context, packet strider predictions could also be use
 ## The broad techniques of packet strider (AKA How?)
 - Builds a rich feature set in the form of pandas dataframes. Over 40 features are engineered from packet metadata such as SSH Protocol message content, normalized statistics, direction, size, latency and sliding window features.
 - Strides through this feature set numerous times using sliding windows (Inspired by Convolutional Neural networks) to predict:
-  - The use -R option in the forward session - this is what *enables* a Reverse connection to be made later in the session. This artefact is discovered very early in the session, directly after the the forward session is authenticated. This is the first available warning sign that Reverse sessions are possible.
+  - The use -R option in the forward session - this is what *enables* a Reverse connection to be made later in the session. This artefact is discovered very early in the session, directly after the forward session is authenticated. This is the first available warning sign that Reverse sessions are possible.
   - Initiation of the Reverse SSH session, this can occur at any point (early, or late) in the forward session. This is discovered prior to the Reverse session being authenticated successfully. This is the second warning sign, in that a reverse session has just been requested and setup for authentication.
   - Success and/or Failure of the Reverse session authentication. This is the third and final warning sign, after this point you know someone is on your host, inside a reverse session.
   - The use of the -A option (SSH Agent Forwarding), which enables the client to share it's local SSH private keys with the server. This functionality is generally considered dangerous.
@@ -117,7 +117,7 @@ Packet Strider does a vast amount of "striding" in full capacity mode. This can 
 - The -p --predict_plot option is the most intensive operation. Think about just running with the output to terminal, and then see if you'd like this plotted.
 - Use the -m --metaonly option. This only retrieves the high level metadata such as Protocol names and HASSH data. This can be useful to quickly determine if you are dealing with an interactive session using OpenSSH, or with a file transfer client like Cyberduck.
 - Pre filter the pcap to the ssh traffic.
-- Pre filter the pcap to the stream you want, which you may have learned by previously running with the speedy -m --metaonly option. You can do this in Packet Strider you can examine only stream "NSTREAM" with the "-n NSTREAM" option, or you can pre filter with wireshark etc. 
+- Pre filter the pcap to the stream you want, which you may have learned by previously running with the speedy -m --metaonly option. You can examine only stream "NSTREAM" with the "-n NSTREAM" option, or you can pre filter with wireshark etc. 
 - There may be times when you identify something interesting in a subset of a very large packet set. Here you can use the zoom feature to only examine and plot the packets in the region you are interested in. Use -z ZOOM, --zoom ZOOM for this. eg -z 100-500
 - Most times you will be interested in understanding keystroke activity, so while not using the -k option will save processing speed, it also means you won't get this valuable insight.
 
